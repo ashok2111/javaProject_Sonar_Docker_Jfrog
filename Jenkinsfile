@@ -5,7 +5,11 @@ pipeline {
             steps {
                 checkout([$class: 'GitSCM', branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/kmehaboobsubhani/javaWorking.git']]])
             }
-        }        
+        }    
+	    
+	     stage ('Code Quality') {
+      sh "mvn -Dmaven.test.failure.ignore sonar:sonar"
+  }
         stage('Clean') {
             steps {
                sh "mvn -Dmaven.test.failure.ignore=true clean"
@@ -46,46 +50,7 @@ pipeline {
                 sh ('mvn install');
             }
         }
-        
-         stage('Quality Gate Statuc Check'){
-              steps{
-                      script{
-                      withSonarQubeEnv('sonarserver') { 
-                      sh "mvn sonar:sonar"
-                       }
-                      timeout(time: 1, unit: 'HOURS') {
-                      def qg = waitForQualityGate()
-                      if (qg.status != 'OK') {
-                           error "Pipeline aborted due to quality gate failure: ${qg.status}"
-                      }
-                    }
-		    sh "mvn clean install"
-                  }
-                }  
-              }
-        
-        stage('Upload'){
-            steps{
-                rtUpload (
-                 serverId:"Artifactory" ,
-                  spec: '''{
-                   "files": [
-                      {
-                      "pattern": "*.war",
-                      "target": "libs-snapshot-local"
-                      }
-                            ]
-                           }''',
-                        )
-            }
-        }
-        stage ('Publish build info') {
-            steps {
-                rtPublishBuildInfo (
-                    serverId: "Artifactory"
-                )
-            }
-        }
+       
             
         stage('Stage-9 : Deployment - Deploy a Artifact devops-3.0.0-SNAPSHOT.war file to Tomcat Server') { 
             steps {
